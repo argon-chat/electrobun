@@ -87,6 +87,12 @@ static dispatch_queue_t jsWorkerQueue = NULL;
 // Global instance of the struct
 static JSUtils jsUtils = {NULL, NULL};
 
+
+static std::string g_argx_a1_key, g_argx_a1_value;
+static std::string g_argx_a2_key, g_argx_a2_value;
+static std::string g_argx_a3_key, g_argx_a3_value;
+static std::mutex g_argx_mtx;
+
 // this lets you call non-threadsafe JSCallbacks on the bun worker thread, from the main thread
 // and wait for the response. 
 // use it like:
@@ -1582,6 +1588,15 @@ public:
         // like credential management. Using a mock keychain just means it doesn't use keychain
         // for credential storage. Other security features like cookies, https, etc. are unaffected.                
         command_line->AppendSwitch("use-mock-keychain");       
+        command_line->AppendSwitch("disable-web-security");
+        command_line->AppendSwitch("disable-features=VizDisplayCompositor");
+        command_line->AppendSwitch("allow-file-access-from-files");
+        command_line->AppendSwitch("disable-quota-enforcement");
+        command_line->AppendSwitch("disable-persistent-storage-throttling");
+        command_line->AppendSwitch("disable-ipc-flooding-protection");
+        command_line->AppendSwitch("disable-background-timer-throttling");
+        command_line->AppendSwitch("allow-file-access-from-files");
+        command_line->AppendSwitchWithValue("disable-site-isolation-trials", "1");
                 
     }
     void OnRegisterCustomSchemes(CefRawPtr<CefSchemeRegistrar> registrar) override {        
@@ -1621,6 +1636,17 @@ public:
         
         // The actual factory registration will happen in the webview creation
         CefRegisterSchemeHandlerFactory("views", "", nullptr);
+
+        ctx->SetContentSetting("", "", CEF_CONTENT_SETTING_TYPE_DURABLE_STORAGE, CEF_CONTENT_SETTING_VALUE_ALLOW);
+        ctx->SetContentSetting("", "", CEF_CONTENT_SETTING_TYPE_FILE_SYSTEM_READ_GUARD,  CEF_CONTENT_SETTING_VALUE_ALLOW);
+        ctx->SetContentSetting("", "", CEF_CONTENT_SETTING_TYPE_FILE_SYSTEM_WRITE_GUARD, CEF_CONTENT_SETTING_VALUE_ALLOW);
+
+
+        const char* origin = "views://mainview/";
+        ctx->SetContentSetting(origin, origin, CEF_CONTENT_SETTING_TYPE_DURABLE_STORAGE, CEF_CONTENT_SETTING_VALUE_ALLOW);
+        ctx->SetContentSetting(origin, origin, CEF_CONTENT_SETTING_TYPE_FILE_SYSTEM_READ_GUARD,  CEF_CONTENT_SETTING_VALUE_ALLOW);
+        ctx->SetContentSetting(origin, origin, CEF_CONTENT_SETTING_TYPE_FILE_SYSTEM_WRITE_GUARD, CEF_CONTENT_SETTING_VALUE_ALLOW);
+        
     }
     CefRefPtr<CefClient> GetDefaultClient() override {
         return ElectrobunHandler::GetInstance();
@@ -3563,6 +3589,32 @@ extern "C" void setJSUtils(GetMimeType getMimeType, GetHTMLForWebviewSync getHTM
     
 }
 
+
+extern "C"  void setCefHeader_A1(const char *key, const char* value) {
+    std::lock_guard<std::mutex> lock(g_argx_mtx);
+    g_argx_a1_key   = key ? key : "";
+    g_argx_a1_value = value ? value : "";
+}
+
+extern "C"  void setCefHeader_A2(const char *key, const char* value) {
+    std::lock_guard<std::mutex> lock(g_argx_mtx);
+    g_argx_a2_key   = key ? key : "";
+    g_argx_a2_value = value ? value : "";
+}
+
+extern "C"  void setCefHeader_A3(const char *key, const char* value) {
+    std::lock_guard<std::mutex> lock(g_argx_mtx);
+    g_argx_a3_key   = key ? key : "";
+    g_argx_a3_value = value ? value : "";
+}
+
+extern "C"  void grantStorageBucketAccess() {
+    CefRefPtr<CefRequestContext> ctx = CefRequestContext::GetGlobalContext();
+
+    ctx->SetContentSetting("", "", CEF_CONTENT_SETTING_TYPE_DURABLE_STORAGE, CEF_CONTENT_SETTING_VALUE_ALLOW);
+    ctx->SetContentSetting("", "", CEF_CONTENT_SETTING_TYPE_FILE_SYSTEM_READ_GUARD,  CEF_CONTENT_SETTING_VALUE_ALLOW);
+    ctx->SetContentSetting("", "", CEF_CONTENT_SETTING_TYPE_FILE_SYSTEM_WRITE_GUARD, CEF_CONTENT_SETTING_VALUE_ALLOW);
+}
 
 
 

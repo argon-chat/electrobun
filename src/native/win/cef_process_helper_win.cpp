@@ -30,7 +30,7 @@ public:
 
         CefRefPtr<CefV8Value> argonAppObj = CefV8Value::CreateObject(nullptr, nullptr);
         argonAppObj->SetValue("isArgonHost", CefV8Value::CreateBool(true), V8_PROPERTY_ATTRIBUTE_READONLY);
-        argonAppObj->SetValue("isOSX", CefV8Value::CreateBool(true), V8_PROPERTY_ATTRIBUTE_READONLY);
+        argonAppObj->SetValue("isWindows", CefV8Value::CreateBool(true), V8_PROPERTY_ATTRIBUTE_READONLY);
 
         window->SetValue("argon", argonAppObj, V8_PROPERTY_ATTRIBUTE_NONE);
 
