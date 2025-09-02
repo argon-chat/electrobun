@@ -72,6 +72,11 @@ using namespace Microsoft::WRL;
 #define ELECTROBUN_EXPORT __declspec(dllexport)
 #define WM_EXECUTE_SYNC_BLOCK (WM_USER + 1)
 
+static std::string g_argx_a1_key, g_argx_a1_value;
+static std::string g_argx_a2_key, g_argx_a2_value;
+static std::string g_argx_a3_key, g_argx_a3_value;
+static std::mutex g_argx_mtx;
+
 // Forward declarations
 class AbstractView;
 class ContainerView;
@@ -230,10 +235,32 @@ public:
         return this;
     }
 
+     void OnContextInitialized() override {
+        CefRefPtr<CefRequestContext> ctx = CefRequestContext::GetGlobalContext();
+
+        ctx->SetContentSetting("", "", CEF_CONTENT_SETTING_TYPE_DURABLE_STORAGE, CEF_CONTENT_SETTING_VALUE_ALLOW);
+        ctx->SetContentSetting("", "", CEF_CONTENT_SETTING_TYPE_FILE_SYSTEM_READ_GUARD,  CEF_CONTENT_SETTING_VALUE_ALLOW);
+        ctx->SetContentSetting("", "", CEF_CONTENT_SETTING_TYPE_FILE_SYSTEM_WRITE_GUARD, CEF_CONTENT_SETTING_VALUE_ALLOW);
+
+
+        const char* origin = "views://mainview/";
+        ctx->SetContentSetting(origin, origin, CEF_CONTENT_SETTING_TYPE_DURABLE_STORAGE, CEF_CONTENT_SETTING_VALUE_ALLOW);
+        ctx->SetContentSetting(origin, origin, CEF_CONTENT_SETTING_TYPE_FILE_SYSTEM_READ_GUARD,  CEF_CONTENT_SETTING_VALUE_ALLOW);
+        ctx->SetContentSetting(origin, origin, CEF_CONTENT_SETTING_TYPE_FILE_SYSTEM_WRITE_GUARD, CEF_CONTENT_SETTING_VALUE_ALLOW);
+        
+    }
+
     void OnBeforeCommandLineProcessing(const CefString& process_type, CefRefPtr<CefCommandLine> command_line) override {
         // Disable features for minimal implementation
         command_line->AppendSwitch("disable-web-security");
         command_line->AppendSwitch("disable-features=VizDisplayCompositor");
+        command_line->AppendSwitch("allow-file-access-from-files");
+        command_line->AppendSwitch("disable-quota-enforcement");
+        command_line->AppendSwitch("disable-persistent-storage-throttling");
+        command_line->AppendSwitch("disable-ipc-flooding-protection");
+        command_line->AppendSwitch("disable-background-timer-throttling");
+        command_line->AppendSwitch("allow-file-access-from-files");
+        command_line->AppendSwitchWithValue("disable-site-isolation-trials", "1");
     }
 
     void OnRegisterCustomSchemes(CefRawPtr<CefSchemeRegistrar> registrar) override {
@@ -463,6 +490,32 @@ private:
     IMPLEMENT_REFCOUNTING(ElectrobunResponseFilter);
 };
 
+class ElectrobunResourceRequestHandler : public CefResourceRequestHandler {
+public:
+  cef_return_value_t OnBeforeResourceLoad(CefRefPtr<CefBrowser> browser,
+      CefRefPtr<CefFrame> frame,
+      CefRefPtr<CefRequest> request,
+      CefRefPtr<CefCallback> callback) override 
+  {
+    const std::string url = request->GetURL();
+    if (url.rfind("http", 0) == 0) {
+      CefRequest::HeaderMap headers;
+      request->GetHeaderMap(headers);
+
+      headers.insert({ CefString(g_argx_a1_key), CefString(g_argx_a1_value) });
+      headers.insert({ CefString(g_argx_a2_key), CefString(g_argx_a2_value) });
+      headers.insert({ CefString(g_argx_a3_key), CefString(g_argx_a3_value) });
+      headers.insert({ CefString("Sec-Ner"), CefString("0024319091beb20c")});
+      
+      request->SetHeaderMap(headers);
+    }
+    return RV_CONTINUE;
+  }
+
+private:
+  IMPLEMENT_REFCOUNTING(ElectrobunResourceRequestHandler);
+};
+
 // CEF Request Handler for views:// scheme support
 class ElectrobunRequestHandler : public CefRequestHandler {
 public:
@@ -470,9 +523,23 @@ public:
 
     // Script injection will be handled via render process context creation
 
+   CefRefPtr<CefResourceRequestHandler> GetResourceRequestHandler(
+      CefRefPtr<CefBrowser> browser,
+      CefRefPtr<CefFrame> frame,
+      CefRefPtr<CefRequest> request,
+      bool is_navigation,
+      bool is_download,
+      const CefString& request_initiator,
+      bool& disable_default_handling) override 
+  {
+    return new ElectrobunResourceRequestHandler();
+  }
+
 private:
     IMPLEMENT_REFCOUNTING(ElectrobunRequestHandler);
 };
+
+
 
 // CEF Context Menu Handler for devtools support
 class ElectrobunContextMenuHandler : public CefContextMenuHandler {
@@ -5516,7 +5583,6 @@ ELECTROBUN_EXPORT void setApplicationMenu(const char *jsonString, ZigStatusItemH
     });
 }
 
-
 ELECTROBUN_EXPORT void showContextMenu(const char *jsonString, ZigStatusItemHandler contextMenuHandler) {
     if (!jsonString) {
         ::log("ERROR: NULL JSON string passed to showContextMenu");
@@ -5616,6 +5682,33 @@ ELECTROBUN_EXPORT uint32_t getNSWindowStyleMask(
     if (Closable) mask |= 4;
     if (Resizable) mask |= 8;
     return mask;
+}
+
+
+ELECTROBUN_EXPORT void setCefHeader_A1(const char *key, const char* value) {
+    std::lock_guard<std::mutex> lock(g_argx_mtx);
+    g_argx_a1_key   = key ? key : "";
+    g_argx_a1_value = value ? value : "";
+}
+
+ELECTROBUN_EXPORT void setCefHeader_A2(const char *key, const char* value) {
+    std::lock_guard<std::mutex> lock(g_argx_mtx);
+    g_argx_a2_key   = key ? key : "";
+    g_argx_a2_value = value ? value : "";
+}
+
+ELECTROBUN_EXPORT void setCefHeader_A3(const char *key, const char* value) {
+    std::lock_guard<std::mutex> lock(g_argx_mtx);
+    g_argx_a3_key   = key ? key : "";
+    g_argx_a3_value = value ? value : "";
+}
+
+ELECTROBUN_EXPORT void grantStorageBucketAccess() {
+    CefRefPtr<CefRequestContext> ctx = CefRequestContext::GetGlobalContext();
+
+    ctx->SetContentSetting("", "", CEF_CONTENT_SETTING_TYPE_DURABLE_STORAGE, CEF_CONTENT_SETTING_VALUE_ALLOW);
+    ctx->SetContentSetting("", "", CEF_CONTENT_SETTING_TYPE_FILE_SYSTEM_READ_GUARD,  CEF_CONTENT_SETTING_VALUE_ALLOW);
+    ctx->SetContentSetting("", "", CEF_CONTENT_SETTING_TYPE_FILE_SYSTEM_WRITE_GUARD, CEF_CONTENT_SETTING_VALUE_ALLOW);
 }
 
 } // extern "C"
