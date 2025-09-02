@@ -1637,16 +1637,12 @@ public:
         // The actual factory registration will happen in the webview creation
         CefRegisterSchemeHandlerFactory("views", "", nullptr);
 
-        ctx->SetContentSetting("", "", CEF_CONTENT_SETTING_TYPE_DURABLE_STORAGE, CEF_CONTENT_SETTING_VALUE_ALLOW);
-        ctx->SetContentSetting("", "", CEF_CONTENT_SETTING_TYPE_FILE_SYSTEM_READ_GUARD,  CEF_CONTENT_SETTING_VALUE_ALLOW);
-        ctx->SetContentSetting("", "", CEF_CONTENT_SETTING_TYPE_FILE_SYSTEM_WRITE_GUARD, CEF_CONTENT_SETTING_VALUE_ALLOW);
-
-
-        const char* origin = "views://mainview/";
-        ctx->SetContentSetting(origin, origin, CEF_CONTENT_SETTING_TYPE_DURABLE_STORAGE, CEF_CONTENT_SETTING_VALUE_ALLOW);
-        ctx->SetContentSetting(origin, origin, CEF_CONTENT_SETTING_TYPE_FILE_SYSTEM_READ_GUARD,  CEF_CONTENT_SETTING_VALUE_ALLOW);
-        ctx->SetContentSetting(origin, origin, CEF_CONTENT_SETTING_TYPE_FILE_SYSTEM_WRITE_GUARD, CEF_CONTENT_SETTING_VALUE_ALLOW);
+        CefRefPtr<CefRequestContext> ctx = CefRequestContext::GetGlobalContext();
+        auto allowObj = CefValue::Create();
         
+        allowObj->SetInt(CEF_CONTENT_SETTING_VALUE_ALLOW);
+
+        ctx->SetWebsiteSetting("", "", CEF_CONTENT_SETTING_TYPE_DURABLE_STORAGE, allowObj);
     }
     CefRefPtr<CefClient> GetDefaultClient() override {
         return ElectrobunHandler::GetInstance();
@@ -3609,11 +3605,6 @@ extern "C"  void setCefHeader_A3(const char *key, const char* value) {
 }
 
 extern "C"  void grantStorageBucketAccess() {
-    CefRefPtr<CefRequestContext> ctx = CefRequestContext::GetGlobalContext();
-
-    ctx->SetContentSetting("", "", CEF_CONTENT_SETTING_TYPE_DURABLE_STORAGE, CEF_CONTENT_SETTING_VALUE_ALLOW);
-    ctx->SetContentSetting("", "", CEF_CONTENT_SETTING_TYPE_FILE_SYSTEM_READ_GUARD,  CEF_CONTENT_SETTING_VALUE_ALLOW);
-    ctx->SetContentSetting("", "", CEF_CONTENT_SETTING_TYPE_FILE_SYSTEM_WRITE_GUARD, CEF_CONTENT_SETTING_VALUE_ALLOW);
 }
 
 

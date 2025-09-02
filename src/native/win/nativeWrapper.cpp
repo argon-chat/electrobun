@@ -237,22 +237,17 @@ public:
 
      void OnContextInitialized() override {
         CefRefPtr<CefRequestContext> ctx = CefRequestContext::GetGlobalContext();
-
-        ctx->SetContentSetting("", "", CEF_CONTENT_SETTING_TYPE_DURABLE_STORAGE, CEF_CONTENT_SETTING_VALUE_ALLOW);
-        ctx->SetContentSetting("", "", CEF_CONTENT_SETTING_TYPE_FILE_SYSTEM_READ_GUARD,  CEF_CONTENT_SETTING_VALUE_ALLOW);
-        ctx->SetContentSetting("", "", CEF_CONTENT_SETTING_TYPE_FILE_SYSTEM_WRITE_GUARD, CEF_CONTENT_SETTING_VALUE_ALLOW);
-
-
-        const char* origin = "views://mainview/";
-        ctx->SetContentSetting(origin, origin, CEF_CONTENT_SETTING_TYPE_DURABLE_STORAGE, CEF_CONTENT_SETTING_VALUE_ALLOW);
-        ctx->SetContentSetting(origin, origin, CEF_CONTENT_SETTING_TYPE_FILE_SYSTEM_READ_GUARD,  CEF_CONTENT_SETTING_VALUE_ALLOW);
-        ctx->SetContentSetting(origin, origin, CEF_CONTENT_SETTING_TYPE_FILE_SYSTEM_WRITE_GUARD, CEF_CONTENT_SETTING_VALUE_ALLOW);
+        auto allowObj = CefValue::Create();
         
+        allowObj->SetInt(CEF_CONTENT_SETTING_VALUE_ALLOW);
+
+        ctx->SetWebsiteSetting("", "", CEF_CONTENT_SETTING_TYPE_DURABLE_STORAGE, allowObj);
     }
 
     void OnBeforeCommandLineProcessing(const CefString& process_type, CefRefPtr<CefCommandLine> command_line) override {
         // Disable features for minimal implementation
         command_line->AppendSwitch("disable-web-security");
+        command_line->AppendSwitch("enable-experimental-web-platform-features");
         command_line->AppendSwitch("disable-features=VizDisplayCompositor");
         command_line->AppendSwitch("allow-file-access-from-files");
         command_line->AppendSwitch("disable-quota-enforcement");
@@ -5703,13 +5698,7 @@ ELECTROBUN_EXPORT void setCefHeader_A3(const char *key, const char* value) {
     g_argx_a3_value = value ? value : "";
 }
 
-ELECTROBUN_EXPORT void grantStorageBucketAccess() {
-    CefRefPtr<CefRequestContext> ctx = CefRequestContext::GetGlobalContext();
-
-    ctx->SetContentSetting("", "", CEF_CONTENT_SETTING_TYPE_DURABLE_STORAGE, CEF_CONTENT_SETTING_VALUE_ALLOW);
-    ctx->SetContentSetting("", "", CEF_CONTENT_SETTING_TYPE_FILE_SYSTEM_READ_GUARD,  CEF_CONTENT_SETTING_VALUE_ALLOW);
-    ctx->SetContentSetting("", "", CEF_CONTENT_SETTING_TYPE_FILE_SYSTEM_WRITE_GUARD, CEF_CONTENT_SETTING_VALUE_ALLOW);
-}
+ELECTROBUN_EXPORT void grantStorageBucketAccess() {}
 
 } // extern "C"
 
